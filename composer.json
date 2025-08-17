@@ -1,0 +1,31 @@
+{
+  "name": "simone-bianco/laravel-rules",
+  "version": "1.0.0",
+  "description": "Gestione dinamica e documentata delle regole di validazione Laravel (builder + generatore PHPDoc).",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {"name": "Simone Bianco"}
+  ],
+  "require": {
+      "php": ">=8.3",
+      "illuminate/support": "^12.0",
+      "illuminate/validation": "^12.0",
+      "illuminate/console": "^12.0",
+      "illuminate/cache": "^12.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "SimoneBianco\\LaravelRules\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "SimoneBianco\\LaravelRules\\LaravelRulesServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
