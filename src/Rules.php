@@ -16,9 +16,7 @@ use Stringable;
 
 class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringable
 {
-    // Nome nuovo del file di configurazione primario
     public const string CONFIG_FILE = 'laravel-rules';
-    // Gruppo riservato per i campi orfani
     public const string ORPHANS_GROUP = 'orphans';
     protected const string CACHE_KEY = 'rules_';
 
@@ -37,10 +35,8 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
 
     protected static function _getFieldsRules(string $group): array
     {
-        // Primary (nuovo) file di config
         $fieldsRules = config(sprintf('%s.%s', self::CONFIG_FILE, $group));
 
-        // Fallback retro‑compatibilità: vecchio file validation.php
         if (empty($fieldsRules)) {
             throw new InvalidArgumentException(sprintf('Rules not found for group %s', $group));
         }
@@ -136,7 +132,7 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
             return $this;
         }
         throw new BadMethodCallException(
-            sprintf('Il metodo %s::%s non esiste per Rules', static::class, $name)
+            sprintf('Method %s::%s does not exist.', static::class, $name)
         );
     }
 

@@ -6,14 +6,14 @@ use Illuminate\Support\Facades\Facade;
 use SimoneBianco\LaravelRules\Rules as RulesInstance;
 
 /**
- * Facade per accedere al builder delle regole senza istanziare manualmente.
+ * Facade to access the rules builder without manual instantiation.
  *
- * Uso:
- *  use SimoneBianco\LaravelRules\Facades\Rules;
- *  $rules = Rules::for('user')->injectRuleForEmail('required|email')->toArray();
+ * Usage:
+ * use SimoneBianco\LaravelRules\Facades\Rules;
+ * $rules = Rules::for('user')->injectRuleForEmail('required|email')->toArray();
  *
- * @method static RulesInstance for(string $group) Crea un'istanza Rules per il gruppo indicato.
- * @method static RulesInstance forOrphansField(string $field) Crea un'istanza Rules per un campo del gruppo orphans.
+ * @method static RulesInstance for(string $group) Creates a Rules instance for the specified group.
+ * @method static Rules-instance forOrphansField(string $field) Creates a Rules instance for a field in the orphans group.
  */
 class Rules extends Facade
 {
@@ -22,4 +22,3 @@ class Rules extends Facade
         return 'laravel-rules.factory';
     }
 }
-

@@ -12,6 +12,6 @@ return [
         ],
     ],
     'orphans' => [
-        // Campi singoli riutilizzabili tra più contesti applicativi
+        // Single fields that are not part of any group
     ],
 ];

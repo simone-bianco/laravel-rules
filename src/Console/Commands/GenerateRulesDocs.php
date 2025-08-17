@@ -11,42 +11,42 @@ use Throwable;
 class GenerateRulesDocs extends Command
 {
     /**
-     * La firma del comando console.
+     * The signature of the console command.
      *
      * @var string
      */
     protected $signature = 'rules:generate-ide-helper';
 
     /**
-     * La descrizione del comando console.
+     * The description of the console command.
      *
      * @var string
      */
-    protected $description = 'Genera un file helper per l\'autocompletamento dell\'IDE per il package laravel-rules.';
+    protected $description = 'Generate an IDE helper file for autocompletion for the laravel-rules package.';
 
     /**
-     * Il percorso del file helper da generare, relativo alla root del progetto.
+     * The path for the helper file to be generated, relative to the project root.
      *
      * @var string
      */
     protected string $outputPath = '_ide_helper_rules.php';
 
     /**
-     * Esegui il comando console.
+     * Execute the console command.
      *
      * @return int
      */
     public function handle(): int
     {
         $this->newLine();
-        $this->line("🚀 \e[1;34mGenerazione del file IDE Helper per Laravel Rules...\e[0m");
+        $this->line("🚀 \e[1;34mGenerating IDE Helper file for Laravel Rules...\e[0m");
         $this->line("========================================================");
 
         try {
-            $this->line("   - Lettura di \e[0;33mconfig/validation.php\e[0m...");
+            $this->line("   - Reading \e[0;33mconfig/laravel-rules.php\e[0m...");
             $validationConfig = config(Rules::CONFIG_FILE);
             if (!$validationConfig) {
-                $this->error('   ❌ File di configurazione config/validation.php non trovato o vuoto. Operazione annullata.');
+                $this->error('   ❌ Configuration file config/laravel-rules.php not found or is empty. Operation cancelled.');
                 return self::FAILURE;
             }
 
@@ -60,35 +60,35 @@ class GenerateRulesDocs extends Command
             sort($uniqueFields);
 
             if (empty($uniqueFields)) {
-                $this->warn('   ⚠️  Nessun campo di validazione trovato. Verrà generato un file helper vuoto.');
+                $this->warn('   ⚠️  No validation fields found. An empty helper file will be generated.');
             } else {
-                $this->info('   - Trovati ' . count($uniqueFields) . ' campi di validazione univoci.');
+                $this->info('   - Found ' . count($uniqueFields) . ' unique validation fields.');
             }
 
             $docLines = [];
             foreach ($uniqueFields as $field) {
                 $methodName = 'injectRuleFor' . Str::studly($field);
                 $description = "Injects a validation rule for the '{$field}' field.";
-                // Aggiunge il namespace completo nel tipo di ritorno per chiarezza
+                // Adds the fully qualified namespace in the return type for clarity
                 $docLines[] = " * @method static \\SimoneBianco\\LaravelRules\\Rules {$methodName}(array|string|\\Illuminate\\Validation\\Rule \$rules) {$description}";
             }
             $generatedDocs = implode("\n", $docLines);
 
-            $this->line('   - Costruzione del contenuto del file helper...');
+            $this->line('   - Building the helper file content...');
             $fileContent = $this->createHelperFileContent($generatedDocs);
 
             $fullPath = base_path($this->outputPath);
             File::put($fullPath, $fileContent);
 
             $this->line("   ----------------------------------------------------");
-            $this->info("🎉 \e[1;32mFile IDE Helper generato con successo!\e[0m");
-            $this->comment("   File creato in: \e[0;33m{$this->outputPath}\e[0m");
-            $this->comment('   Potrebbe essere necessario riavviare l\'IDE per applicare le modifiche.');
+            $this->info("🎉 \e[1;32mIDE Helper file generated successfully!\e[0m");
+            $this->comment("   File created at: \e[0;33m{$this->outputPath}\e[0m");
+            $this->comment('   You may need to restart your IDE for the changes to take effect.');
             $this->newLine();
 
         } catch (Throwable $e) {
-            $this->error("   ❌ Errore imprevisto: " . $e->getMessage());
-            $this->line("      File: " . $e->getFile() . " Linea: " . $e->getLine());
+            $this->error("   ❌ Unexpected error: " . $e->getMessage());
+            $this->line("      File: " . $e->getFile() . " Line: " . $e->getLine());
             return self::FAILURE;
         }
 
@@ -96,7 +96,7 @@ class GenerateRulesDocs extends Command
     }
 
     /**
-     * Crea il template del file helper con la sintassi PHPDoc corretta.
+     * Creates the helper file template with the correct PHPDoc syntax.
      *
      * @param string $phpdocMethods
      * @return string
@@ -105,8 +105,7 @@ class GenerateRulesDocs extends Command
     {
         $namespace = 'SimoneBianco\\LaravelRules';
 
-        // ** LA CORREZIONE È QUI **
-        // Il blocco PHPDoc viene costruito e inserito PRIMA della classe
+        // The PHPDoc block is built and inserted BEFORE the class
         return <<<PHP
 <?php
 
@@ -114,24 +113,24 @@ class GenerateRulesDocs extends Command
 // phpcs:ignoreFile
 
 /**
- * Un file helper per SimoneBianco\LaravelRules, per fornire informazioni
- * di autocompletamento al tuo IDE.
+ * A helper file for SimoneBianco\LaravelRules, to provide autocompletion
+ * information to your IDE.
  *
- * Questo file non dovrebbe essere incluso nel tuo codice, ma solo analizzato dal tuo IDE!
+ * This file should not be included in your code, but only analyzed by your IDE!
  *
  * @see \\{$namespace}\\Rules
  */
 
 namespace {$namespace} {
-    // Questa classe viene ridefinita qui per aggiungere il blocco PHPDoc.
-    // Il blocco `if (false)` assicura che questo codice non venga mai eseguito a runtime.
+    // This class is redefined here to add the PHPDoc block.
+    // The `if (false)` block ensures that this code is never executed at runtime.
     if (false) {
         /**
 {$phpdocMethods}
          */
         class Rules
         {
-            // Il corpo della classe DEVE essere vuoto.
+            // The class body MUST be empty.
         }
     }
 }

@@ -3,7 +3,7 @@
 namespace SimoneBianco\LaravelRules;
 
 /**
- * Factory non statica usata dalla Facade per creare istanze di Rules.
+ * Non static factory to create instances of Rules.
  */
 class RulesFactory
 {

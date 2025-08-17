@@ -1,7 +1,7 @@
 {
   "name": "simone-bianco/laravel-rules",
   "version": "1.0.0",
-  "description": "Gestione dinamica e documentata delle regole di validazione Laravel (builder + generatore PHPDoc).",
+  "description": "Laravel package that centralizes and composes reusable validation rules via a factory and configuration, with an Artisan command to auto-generate documentation for the rules. Ideal for keeping validation DRY and consistent across application domains.",
   "type": "library",
   "license": "MIT",
   "authors": [

@@ -1,80 +1,96 @@
 # Laravel Rules (simone-bianco/laravel-rules)
 
-Gestione dinamica, centralizzata e cache delle regole di validazione Laravel, con generazione di helper IDE senza modificare la classe originale.
+Dynamic, centralized, and cached management of Laravel validation rules, with IDE helper generation without modifying the original class.
 
-## Obiettivi
-- Centralizzare definizioni strutturali delle regole (min, max, pattern, ecc.).
-- Escludere dal config tutte le regole contestuali (`required`, `nullable`, `unique`, `confirmed`, ecc.).
-- Aggiungere dinamicamente regole contestuali a runtime via API fluente.
-- Offrire autocompletamento per metodi dinamici `injectRuleFor*` tramite file helper generato.
+## Goals
 
-## Installazione (path repository locale)
-Aggiungi (se non presente) nel composer.json root:
+- Centralize structural rule definitions (min, max, pattern, etc.).
+- Exclude all contextual rules from the config (`required`, `nullable`, `unique`, `confirmed`, etc.).
+- Dynamically add contextual rules at runtime via a fluent API.
+- Provide autocompletion for dynamic `injectRuleFor*` methods via a generated helper file.
+
+## Installation (local repository path)
+
+Add (if not already present) to your root `composer.json`:
+
 ```json
 "repositories": [
   {"type": "path", "url": "packages/simone-bianco/laravel-rules", "options": {"symlink": true}}
 ]
 ```
-Quindi installa:
+
+Then install:
+
 ```bash
 composer require simone-bianco/laravel-rules:*
 ```
 
-Il service provider è auto‑discovered. È creato anche un alias retro‑compatibile `\App\Features\Rules`.
+The service provider is auto-discovered. A backward-compatible alias `\App\Features\Rules` is also created.
 
-## Pubblicazione Configurazione
-Pubblica il file di configurazione di esempio (se non ne hai già uno):
+## Publishing Configuration
+
+Publish the sample configuration file (if you don't already have one):
+
 ```bash
 php artisan vendor:publish --tag=laravel-rules-config
 ```
-Questo crea `config/validation.php` con una struttura iniziale:
+
+This creates `config/laravel-rules.php` with an initial structure:
+
 ```php
 return [
     'user' => [
         'name' => [ 'min' => 2, 'max' => 255 ],
         'email' => [ 'max' => 255, 'email' => true ],
     ],
-    'orphans' => [ /* campi standalone */ ],
+    'orphans' => [ /* standalone fields */ ],
 ];
 ```
-NOTA: Non inserire regole contestuali (required, unique, nullable, confirmed...).
 
-## Generazione Helper IDE
-Per ottenere autocompletamento dei metodi dinamici `injectRuleForXyz` senza toccare la classe:
+NOTE: Do not insert contextual rules (required, unique, nullable, confirmed...).
+
+## IDE Helper Generation
+
+To get autocompletion for dynamic `injectRuleForXyz` methods without touching the class:
+
 ```bash
 php artisan docs:generate-rules
 ```
-Genera `_ide_helper_laravel_rules.php` (modificabile con `--path=`) che gli IDE indicizzano.
-Rigenera il file ogni volta che aggiungi/rimuovi campi nel config.
 
-## API Principali
+This generates `_ide_helper_laravel_rules.php` (path is customizable with `--path=`) which IDEs will index.
+Regenerate the file whenever you add/remove fields in the config.
+
+## Main API
+
 ```php
-use SimoneBianco\LaravelRules\Rules; // oppure \App\Features\Rules
+use SimoneBianco\LaravelRules\Rules; // or \App\Features\Rules
 
-// Regole complete per un gruppo
+// Full rules for a group
 $rules = Rules::for('user')->toArray();
 
-// Solo alcuni campi
+// Only some fields
 $loginRules = Rules::for('user')->only(['email', 'password']);
 
-// Escludere campi
+// Exclude fields
 $updateRules = Rules::for('user')->except(['password']);
 
-// Campo orfano
+// Orphan field
 $slugRules = Rules::forOrphansField('slug')->toArray();
 
-// Iniettare regole aggiuntive (contestuali) per update
+// Inject additional (contextual) rules for an update
 $rules = Rules::for('user')
     ->injectRuleForField('email', 'required|email|unique:users,email,'.$userId)
-    ->injectRuleForName(['required', 'string']) // tramite metodo dinamico
+    ->injectRuleForName(['required', 'string']) // via dynamic method
     ->toArray();
 ```
 
-### Metodi Dinamici
-Ogni campo definito nel gruppo genera un metodo virtuale: `injectRuleFor{StudlyCaseCampo}`.
-Esempio: campo `first_name` => `injectRuleForFirstName()`.
+### Dynamic Methods
 
-## Esempio in una FormRequest
+Each field defined in the group generates a virtual method: `injectRuleFor{StudlyCaseField}`.
+Example: `first_name` field =\> `injectRuleForFirstName()`.
+
+## Example in a FormRequest
+
 ```php
 public function rules(): array
 {
@@ -86,8 +102,10 @@ public function rules(): array
 }
 ```
 
-## Formato Configurazione
-Ogni campo è un array associativo `regola => valore`:
+## Configuration Format
+
+Each field is an associative array of `rule => value`:
+
 ```php
 'username' => [
   'min' => 5,
@@ -95,29 +113,35 @@ Ogni campo è un array associativo `regola => valore`:
   'regex' => '/^[a-z0-9.]+$/',
 ],
 ```
-Array come valore vengono trasformati in liste CSV (`in:admin,user,guest`).
+
+Arrays as values are transformed into CSV lists (`in:admin,user,guest`).
 
 ## Caching
-Le regole elaborate sono cache‑izzate (TTL 1h). Svuota con:
+
+The processed rules are cached (1h TTL). Clear with:
+
 ```bash
 php artisan cache:clear
 ```
 
-## Comandi Artisan
-| Comando | Descrizione |
-|---------|-------------|
-| `rules:publish-config` | Pubblica il file `config/validation.php`. |
-| `docs:generate-rules` | Genera `_ide_helper_laravel_rules.php` con i metodi dinamici. |
+## Artisan Commands
 
-## Perché Non Modificare La Classe
-Il file helper evita merge noise e mantiene la classe minimale, aderendo al principio SRP.
+| Command | Description |
+|---|---|
+| `rules:publish-config` | Publishes the `config/laravel-rules.php` file. |
+| `docs:generate-rules` | Generates `_ide_helper_laravel_rules.php` with dynamic methods. |
 
-## Buone Pratiche
-- Mantieni il config privo di regole contestuali.
-- Rigenera l'helper dopo aver aggiunto nuovi campi.
-- Usa `only()` quando validi subset (login, update parziali).
-- Evita duplicazioni: centralizza sempre lunghezze e pattern.
+## Why Not Modify The Class
 
-## Licenza
+The helper file avoids merge noise and keeps the class minimal, adhering to the SRP (Single Responsibility Principle).
+
+## Best Practices
+
+- Keep the config free of contextual rules.
+- Regenerate the helper after adding new fields.
+- Use `only()` when validating subsets (login, partial updates).
+- Avoid duplication: always centralize lengths and patterns.
+
+## License
+
 MIT
-
