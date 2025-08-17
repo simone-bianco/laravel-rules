@@ -3,10 +3,12 @@
 return [
     'user' => [
         'name' => [
+            'string' => true,
             'min' => 2,
             'max' => 255,
         ],
         'email' => [
+            'string' => true,
             'max' => 255,
             'email' => true,
         ],

@@ -62,10 +62,14 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
         foreach ($fieldsRules as $field => $rules) {
             $fieldRules = [];
             foreach ($rules as $rule => $value) {
-                if (is_array($value)) {
-                    $value = implode(',', $value);
+                if ($value === true) {
+                    $fieldRules[] = $rule;
+                } else {
+                    if (is_array($value)) {
+                        $value = implode(',', $value);
+                    }
+                    $fieldRules[] = "$rule:$value";
                 }
-                $fieldRules[] = "$rule:$value";
             }
             $laravelRules[$field] = $fieldRules;
         }
@@ -74,53 +78,188 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
         return $laravelRules;
     }
 
+    /**
+     * Creates a new Rules instance.
+     *
+     * @param string $group The name of the validation group.
+     * @param array $rules The pre-processed validation rules.
+     */
     public function __construct(string $group, array $rules)
     {
         $this->group = $group;
         $this->rules = $rules;
     }
 
+    /**
+     * Creates a new Rules instance for a specified validation group from the config file.
+     * This is the primary entry point for building a ruleset.
+     *
+     * <code>
+     * $userRules = Rules::for('user')->toArray();
+     * </code>
+     *
+     * @param string $group The name of the group defined in the configuration file.
+     * @return static A new Rules instance for fluent chaining.
+     */
     public static function for(string $group): static
     {
         return (new static($group, self::_getLaravelRules($group)));
     }
 
+    /**
+     * Creates a new Rules instance for a single field from the 'orphans' group.
+     * This is useful for standalone fields that don't belong to a larger entity.
+     *
+     * <code>
+     * $slugRules = Rules::forOrphansField('slug')->toArray();
+     * </code>
+     *
+     * @param string $field The name of the field in the 'orphans' group.
+     * @return static A new Rules instance for fluent chaining.
+     */
     public static function forOrphansField(string $field): static
     {
         return (new static(self::ORPHANS_GROUP, self::_getLaravelRules(self::ORPHANS_GROUP, [$field])));
     }
 
-    public function only(array $fields): self
+    /**
+     * Filters the ruleset to only include the specified fields.
+     *
+     * <code>
+     * // Keep only name and email
+     * $rules = Rules::for('user')->only(['name', 'email'])->toArray();
+     *
+     * // Keep only the email field
+     * $emailRules = Rules::for('user')->only('email')->toArray();
+     * </code>
+     *
+     * @param array|string $fields An array of fields to keep, or a single field name as a string.
+     * @return $this The current instance for fluent chaining.
+     */
+    public function only(array|string $fields): self
     {
+        if (is_string($fields)) {
+            $fields = [$fields];
+        }
+
         $this->rules = array_intersect_key($this->rules, array_flip($fields));
         return $this;
     }
 
+    /**
+     * Injects a new field and its validation rules into the current instance.
+     * This is useful for adding fields that are not defined in the configuration file.
+     *
+     * <code>
+     * $rules = Rules::for('user')
+     * ->only('name')
+     * ->injectField('terms_accepted', ['required', 'accepted'])
+     * ->toArray();
+     * </code>
+     *
+     * @param string $field The name of the new field.
+     * @param array $rules An array of validation rules for the new field.
+     * @return $this The current instance for fluent chaining.
+     * @throws InvalidArgumentException if the field already exists in the ruleset.
+     */
+    public function injectField(string $field, array $rules): self
+    {
+        if (array_key_exists($field, $this->rules)) {
+            throw new InvalidArgumentException(sprintf('Field %s already exists in group %s', $field, $this->group));
+        }
+
+        $this->rules[$field] = $rules;
+
+        return $this;
+    }
+
+    /**
+     * Retrieves the validation rules for a single specified field.
+     *
+     * <code>
+     * $nameRules = Rules::for('user')->getFieldRules('name');
+     * // $nameRules will be ['min:2', 'max:255']
+     * </code>
+     *
+     * @param string $field The name of the field whose rules are to be retrieved.
+     * @return array An array of rules for the specified field.
+     * @throws InvalidArgumentException if the field is not found in the ruleset.
+     */
+    public function getFieldRules(string $field): array
+    {
+        if (!array_key_exists($field, $this->rules)) {
+            throw new InvalidArgumentException(sprintf('Field %s not found in group %s', $field, $this->group));
+        }
+
+        return $this->rules[$field];
+    }
+
+    /**
+     * Excludes the specified fields from the current ruleset.
+     *
+     * <code>
+     * // Get all user rules except for the password
+     * $rules = Rules::for('user')->except(['password'])->toArray();
+     * </code>
+     *
+     * @param array $fields An array of field names to exclude.
+     * @return $this The current instance for fluent chaining.
+     */
     public function except(array $fields): self
     {
         $this->rules = array_diff_key($this->rules, array_flip($fields));
         return $this;
     }
 
-    public function injectRuleForField(string $field, array|string|Rule $rules): static
+    /**
+     * Injects additional validation rules for an existing field in the ruleset.
+     * This is the primary method for adding contextual rules like `required` or `unique`.
+     *
+     * <code>
+     * $userId = 1;
+     * $rules = Rules::for('user')
+     * ->injectRuleForField('email', 'required|email')
+     * ->injectRuleForField('first_name', ['required', 'email', 'min:2'])
+     * ->injectRuleForField('username', Rule::unique('users')->ignore($userId))
+     * ->toArray();
+     * </code>
+     *
+     * @param string $field The field to which the rules should be added.
+     * @param array|string|Rule $rules The rule or rules to add.
+     * @return static The current instance for fluent chaining.
+     * @throws InvalidArgumentException if the specified field does not exist.
+     */
+    public function injectRuleForField(string $field, mixed $rules): static
     {
         if (!array_key_exists($field, $this->rules)) {
             throw new InvalidArgumentException(sprintf('Rule %s not found for group %s', $field, $this->group));
         }
 
-        $newRules = [];
-        if ($rules instanceof Rule) {
-            $newRules[] = $rules;
-        } elseif (is_string($rules)) {
-            $newRules = explode('|', $rules);
+        if (is_string($rules)) {
+            $this->rules[$field] = array_merge($this->rules[$field], explode('|', $rules));
+        } elseif (is_array($rules)) {
+            $this->rules[$field] = array_merge($this->rules[$field], $rules);
         } else {
-            $newRules = $rules;
+            $this->rules[$field][] = $rules;
         }
 
-        $this->rules[$field] = array_merge($this->rules[$field], $newRules);
         return $this;
     }
 
+    /**
+     * Handles dynamic method calls to inject rules for a specific field.
+     * For example, `injectRuleForUserName(...)` is a shortcut for `injectRuleForField('user_name', ...)`.
+     *
+     * <code>
+     * // Dynamically inject a 'required' rule for the 'name' field
+     * $rules = Rules::for('user')->injectRuleForName(['required'])->toArray();
+     * </code>
+     *
+     * @param string $name The dynamic method name (e.g., 'injectRuleForFieldName').
+     * @param array $arguments The arguments passed to the method, containing the rules.
+     * @return $this The current instance for fluent chaining.
+     * @throws BadMethodCallException if the method name is not a valid dynamic injector.
+     */
     public function __call(string $name, array $arguments)
     {
         if (Str::startsWith($name, 'injectRuleFor')) {
@@ -136,26 +275,70 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
         );
     }
 
+    /**
+     * Returns the final validation rules as a native PHP array.
+     * This is typically the final method called in the chain.
+     *
+     * <code>
+     * $validationRules = Rules::for('user')->toArray();
+     * </code>
+     *
+     * @return array The compiled validation rules.
+     */
     public function toArray(): array
     {
         return $this->rules;
     }
 
+    /**
+     * Get an iterator for the rules, allowing the object to be used in loops.
+     *
+     * <code>
+     * foreach (Rules::for('user') as $field => $rules) {
+     * // ...
+     * }
+     * </code>
+     *
+     * @return ArrayIterator
+     */
     public function getIterator(): ArrayIterator
     {
         return new ArrayIterator($this->rules);
     }
 
+    /**
+     * Count the number of fields in the current ruleset.
+     *
+     * <code>
+     * $fieldCount = count(Rules::for('user'));
+     * </code>
+     *
+     * @return int The number of fields.
+     */
     public function count(): int
     {
         return count($this->rules);
     }
 
+    /**
+     * Specify data which should be serialized to JSON, enabling `json_encode()`.
+     *
+     * @return array
+     */
     public function jsonSerialize(): array
     {
         return $this->rules;
     }
 
+    /**
+     * Convert the rules object to its JSON string representation.
+     *
+     * <code>
+     * echo Rules::for('user');
+     * </code>
+     *
+     * @return string The rules as a JSON string.
+     */
     public function __toString()
     {
         return json_encode($this->toArray(), JSON_PRETTY_PRINT);

@@ -11,25 +11,13 @@ Dynamic, centralized, and cached management of Laravel validation rules, with ID
 
 ## Installation (local repository path)
 
-Add (if not already present) to your root `composer.json`:
-
-```json
-"repositories": [
-  {"type": "path", "url": "packages/simone-bianco/laravel-rules", "options": {"symlink": true}}
-]
-```
-
-Then install:
+Add to composer:
 
 ```bash
-composer require simone-bianco/laravel-rules:*
+composer require simone-bianco/laravel-rules
 ```
 
-The service provider is auto-discovered. A backward-compatible alias `\App\Features\Rules` is also created.
-
 ## Publishing Configuration
-
-Publish the sample configuration file (if you don't already have one):
 
 ```bash
 php artisan vendor:publish --tag=laravel-rules-config
@@ -47,17 +35,15 @@ return [
 ];
 ```
 
-NOTE: Do not insert contextual rules (required, unique, nullable, confirmed...).
-
 ## IDE Helper Generation
 
 To get autocompletion for dynamic `injectRuleForXyz` methods without touching the class:
 
 ```bash
-php artisan docs:generate-rules
+php artisan rules:generate-ide-helper
 ```
 
-This generates `_ide_helper_laravel_rules.php` (path is customizable with `--path=`) which IDEs will index.
+This generates `_ide_helper_rules.php` (path is customizable) which IDEs will index.
 Regenerate the file whenever you add/remove fields in the config.
 
 ## Main API
@@ -68,14 +54,23 @@ use SimoneBianco\LaravelRules\Rules; // or \App\Features\Rules
 // Full rules for a group
 $rules = Rules::for('user')->toArray();
 
-// Only some fields
+// Only some fields (accepts an array or a single string)
 $loginRules = Rules::for('user')->only(['email', 'password']);
+$emailOnlyRules = Rules::for('user')->only('email')->toArray();
 
 // Exclude fields
 $updateRules = Rules::for('user')->except(['password']);
 
+// Get rules for just one field
+$nameRulesArray = Rules::for('user')->getFieldRules('name');
+
 // Orphan field
 $slugRules = Rules::forOrphansField('slug')->toArray();
+
+// Inject a new field with its rules at runtime
+$rulesWithToken = Rules::for('user')
+    ->injectField('remember_token', ['required', 'string', 'max:100'])
+    ->toArray();
 
 // Inject additional (contextual) rules for an update
 $rules = Rules::for('user')
@@ -128,8 +123,7 @@ php artisan cache:clear
 
 | Command | Description |
 |---|---|
-| `rules:publish-config` | Publishes the `config/laravel-rules.php` file. |
-| `docs:generate-rules` | Generates `_ide_helper_laravel_rules.php` with dynamic methods. |
+| `rules:generate-ide-helper` | Generates the `_ide_helper_rules.php` file for IDE autocompletion. |
 
 ## Why Not Modify The Class
 
