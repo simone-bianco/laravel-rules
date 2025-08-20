@@ -2,7 +2,9 @@
 
 namespace SimoneBianco\LaravelRules;
 
+use App\Rules\ValidUsername;
 use BadMethodCallException;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -18,7 +20,8 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
 {
     public const string CONFIG_FILE = 'laravel-rules';
     public const string ORPHANS_GROUP = 'orphans';
-    protected const string CACHE_KEY = 'rules_';
+    public const string CACHE_KEY = 'rules_';
+    public const string CUSTOM_RULE_PREFIX = 'laravel_rules_custom::';
 
     protected string $group = '';
     protected array $rules = [];
@@ -62,15 +65,36 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
         foreach ($fieldsRules as $field => $rules) {
             $fieldRules = [];
             foreach ($rules as $rule => $value) {
+                // if key is integer, we have something like ['required', CUSTOM_RULE_PREFIX::ValidUsernameClass]
+                if (is_int($rule)) {
+                    // If does not start with the custom rule prefix, treat it as a string rule
+                    if (!Str::startsWith($value, self::CUSTOM_RULE_PREFIX)) {
+                        $fieldRules[] = $value;
+                        continue;
+                    }
+
+                    // If it starts with the custom rule prefix, instantiate the validation rule class (only ValidUsernameClass will be taken)
+                    $validationRuleClass = Str::after($value, self::CUSTOM_RULE_PREFIX);
+                    $fieldRules[] = new $validationRuleClass();
+                    continue;
+                }
+
+                // if value is true, we have a rule without parameters (e.g., 'required' or CUSTOM_RULE_PREFIX::ValidUsernameClass)
                 if ($value === true) {
                     $fieldRules[] = $rule;
-                } else {
-                    if (is_array($value)) {
-                        $value = implode(',', $value);
-                    }
-                    $fieldRules[] = "$rule:$value";
+                    continue;
                 }
+
+                // if value is an array, we have a rule with parameters (e.g., ['min:2', 'max:255'])
+                if (is_array($value)) {
+                    $fieldRules[] = 'rule:' . implode('|', $value);
+                    continue;
+                }
+
+                // if value is a string, we have a rule with parameters (e.g., 'min:2', 'max:255')
+                $fieldRules[] = "$rule:$value";
             }
+
             $laravelRules[$field] = $fieldRules;
         }
 
@@ -244,6 +268,27 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
         }
 
         return $this;
+    }
+
+    /**
+     * @param string $validationRuleClass
+     * @return string
+     */
+    public static function customRule(string $validationRuleClass): string
+    {
+        if (!class_exists($validationRuleClass) || !is_subclass_of($validationRuleClass, ValidationRule::class)) {
+            throw new InvalidArgumentException(sprintf(
+                'Class %s must implement %s',
+                $validationRuleClass,
+                ValidationRule::class
+            ));
+        }
+
+        return sprintf(
+            '%s:%s',
+            self::CUSTOM_RULE_PREFIX,
+            $validationRuleClass
+        );
     }
 
     /**

@@ -13,7 +13,7 @@ use SimoneBianco\LaravelRules\Rules as RulesInstance;
  * $rules = Rules::for('user')->injectRuleForEmail('required|email')->toArray();
  *
  * @method static RulesInstance for(string $group) Creates a Rules instance for the specified group.
- * @method static Rules-instance forOrphansField(string $field) Creates a Rules instance for a field in the orphans group.
+ * @method static RulesInstance forOrphansField(string $field) Creates a Rules instance for a field in the orphans group.
  */
 class Rules extends Facade
 {

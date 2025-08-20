@@ -70,7 +70,7 @@ class GenerateRulesDocs extends Command
                 $methodName = 'injectRuleFor' . Str::studly($field);
                 $description = "Injects a validation rule for the '{$field}' field.";
                 // Adds the fully qualified namespace in the return type for clarity
-                $docLines[] = " * @method static \\SimoneBianco\\LaravelRules\\Rules {$methodName}(array|string|\\Illuminate\\Validation\\Rule \$rules) {$description}";
+                $docLines[] = " * @method static \\SimoneBianco\\LaravelRules\\Rules {$methodName}(string[]|string|\\Illuminate\\Validation\\Rule \$rules) {$description}";
             }
             $generatedDocs = implode("\n", $docLines);
 
