@@ -125,9 +125,9 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
      * @param string $group The name of the group defined in the configuration file.
      * @return static A new Rules instance for fluent chaining.
      */
-    public static function for(string $group): static
+    public static function for(string $group, array $only = []): static
     {
-        return (new static($group, self::_getLaravelRules($group)));
+        return (new static($group, self::_getLaravelRules($group, $only)));
     }
 
     /**
@@ -285,7 +285,7 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
         }
 
         return sprintf(
-            '%s:%s',
+            '%s%s',
             self::CUSTOM_RULE_PREFIX,
             $validationRuleClass
         );
