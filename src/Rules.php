@@ -2,7 +2,6 @@
 
 namespace SimoneBianco\LaravelRules;
 
-use App\Rules\ValidUsername;
 use BadMethodCallException;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Cache;
