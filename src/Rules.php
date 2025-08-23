@@ -86,7 +86,7 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
 
                 // if value is an array, we have a rule with parameters (e.g., ['min:2', 'max:255'])
                 if (is_array($value)) {
-                    $fieldRules[] = 'rule:' . implode('|', $value);
+                    $fieldRules[] = $rule . ':' . implode(',', $value);
                     continue;
                 }
 
