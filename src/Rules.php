@@ -45,6 +45,22 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
         return $fieldsRules;
     }
 
+    /**
+     * Converts the rules from the config file into a format compatible with Laravel's Validator.
+     * example:
+     * 'username' => [
+     *    'string',
+     *    Rules::customRule(ValidUsername::class),
+     *   'min' => 5,
+     *   'max' => 255,
+     * ],
+     * becomes
+     * 'username' => ['string', new ValidUsername(), 'min:5', 'max:255']
+     *
+     * @param string $group
+     * @param array|null $allowedFields
+     * @return array
+     */
     protected static function _getLaravelRules(string $group, ?array $allowedFields = null): array
     {
         $laravelRules = self::_getFromCache($group);
