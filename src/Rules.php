@@ -82,15 +82,23 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
             foreach ($rules as $rule => $value) {
                 // if key is integer, we have something like ['required', CUSTOM_RULE_PREFIX::ValidUsernameClass]
                 if (is_int($rule)) {
-                    // If does not start with the custom rule prefix, treat it as a string rule
-                    if (!Str::startsWith($value, self::CUSTOM_RULE_PREFIX)) {
-                        $fieldRules[] = $value;
-                        continue;
-                    }
+                    $isCustomRuleArray = is_array($value) && isset($value[0]) && is_string($value[0]) && Str::startsWith($value[0], self::CUSTOM_RULE_PREFIX);
+                    $isCustomRuleString = is_string($value) && Str::startsWith($value, self::CUSTOM_RULE_PREFIX);
 
-                    // If it starts with the custom rule prefix, instantiate the validation rule class (only ValidUsernameClass will be taken)
-                    $validationRuleClass = Str::after($value, self::CUSTOM_RULE_PREFIX);
-                    $fieldRules[] = new $validationRuleClass();
+                    if ($isCustomRuleArray) {
+                        // Case: Custom rule with arguments, e.g., ['laravel_rules_custom::...', [500]]
+                        $validationRuleClass = Str::after($value[0], self::CUSTOM_RULE_PREFIX);
+                        $arguments = $value[1] ?? [];
+                        $fieldRules[] = new $validationRuleClass(...$arguments);
+                    } elseif ($isCustomRuleString) {
+                        // Case: Custom rule without arguments, e.g., 'laravel_rules_custom::...'
+                        $validationRuleClass = Str::after($value, self::CUSTOM_RULE_PREFIX);
+                        $fieldRules[] = new $validationRuleClass();
+
+                    } else {
+                        // Case: Standard string rule, e.g., 'required'
+                        $fieldRules[] = $value;
+                    }
                     continue;
                 }
 
@@ -287,9 +295,10 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
 
     /**
      * @param string $validationRuleClass
-     * @return string
+     * @param mixed ...$args
+     * @return string|array
      */
-    public static function customRule(string $validationRuleClass): string
+    public static function customRule(string $validationRuleClass, ...$args): string|array
     {
         if (!class_exists($validationRuleClass) || !is_subclass_of($validationRuleClass, ValidationRule::class)) {
             throw new InvalidArgumentException(sprintf(
@@ -299,11 +308,17 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
             ));
         }
 
-        return sprintf(
+        $ruleIdentifier = sprintf(
             '%s%s',
             self::CUSTOM_RULE_PREFIX,
             $validationRuleClass
         );
+
+        if (empty($args)) {
+            return $ruleIdentifier;
+        }
+
+        return [$ruleIdentifier, $args];
     }
 
     /**
