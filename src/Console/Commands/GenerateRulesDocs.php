@@ -24,12 +24,7 @@ class GenerateRulesDocs extends Command
      */
     protected $description = 'Generate an IDE helper file for autocompletion for the laravel-rules package.';
 
-    /**
-     * The path for the helper file to be generated, relative to the project root.
-     *
-     * @var string
-     */
-    protected string $outputPath = '_ide_helper_rules.php';
+
 
     /**
      * Execute the console command.
@@ -43,25 +38,35 @@ class GenerateRulesDocs extends Command
         $this->line("========================================================");
 
         try {
-            $this->line("   - Reading \e[0;33mconfig/laravel-rules.php\e[0m...");
-            $validationConfig = config(Rules::CONFIG_FILE);
-            if (!$validationConfig) {
-                $this->error('   ❌ Configuration file config/laravel-rules.php not found or is empty. Operation cancelled.');
-                return self::FAILURE;
-            }
+            $this->line("   - Loading rules from directory...");
 
-            $allFields = [];
-            foreach ($validationConfig as $group => $fields) {
-                if (is_array($fields)) {
-                    $allFields = array_merge($allFields, array_keys($fields));
-                }
-            }
-            $uniqueFields = array_unique($allFields);
-            sort($uniqueFields);
+            // Get all rule groups from the new system
+            $allGroups = Rules::getAllGroups();
 
-            if (empty($uniqueFields)) {
-                $this->warn('   ⚠️  No validation fields found. An empty helper file will be generated.');
+            if (empty($allGroups)) {
+                $this->warn('   ⚠️  No validation rules found. An empty helper file will be generated.');
+                $this->comment('   💡 Tip: Run "php artisan make:rule <name>" to create your first rule file.');
+                $uniqueFields = [];
             } else {
+                $this->info('   - Found ' . count($allGroups) . ' rule groups.');
+
+                // Collect all unique field names across all groups
+                $allFields = [];
+                foreach ($allGroups as $group) {
+                    try {
+                        $rules = Rules::for($group);
+                        foreach ($rules as $field => $fieldRules) {
+                            $allFields[] = $field;
+                        }
+                    } catch (\Exception $e) {
+                        // Skip groups that can't be loaded
+                        continue;
+                    }
+                }
+
+                $uniqueFields = array_unique($allFields);
+                sort($uniqueFields);
+
                 $this->info('   - Found ' . count($uniqueFields) . ' unique validation fields.');
             }
 
@@ -77,12 +82,13 @@ class GenerateRulesDocs extends Command
             $this->line('   - Building the helper file content...');
             $fileContent = $this->createHelperFileContent($generatedDocs);
 
-            $fullPath = base_path($this->outputPath);
+            $outputPath = config('laravel-rules.ide_helper_path', '_ide_helper_rules.php');
+            $fullPath = base_path($outputPath);
             File::put($fullPath, $fileContent);
 
             $this->line("   ----------------------------------------------------");
             $this->info("🎉 \e[1;32mIDE Helper file generated successfully!\e[0m");
-            $this->comment("   File created at: \e[0;33m{$this->outputPath}\e[0m");
+            $this->comment("   File created at: \e[0;33m{$outputPath}\e[0m");
             $this->comment('   You may need to restart your IDE for the changes to take effect.');
             $this->newLine();
 

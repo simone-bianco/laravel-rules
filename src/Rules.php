@@ -5,6 +5,7 @@ namespace SimoneBianco\LaravelRules;
 use BadMethodCallException;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
@@ -19,30 +20,92 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
 {
     public const string CONFIG_FILE = 'laravel-rules';
     public const string ORPHANS_GROUP = 'orphans';
-    public const string CACHE_KEY = 'rules_';
+    public const string CACHE_KEY = 'laravel_rules_';
     public const string CUSTOM_RULE_PREFIX = 'laravel_rules_custom::';
 
     protected string $group = '';
     protected array $rules = [];
 
+    protected static ?array $allRulesCache = null;
+
+    /**
+     * Load all rules from the configured directory.
+     *
+     * @return array
+     */
+    protected static function _loadAllRules(): array
+    {
+        if (self::$allRulesCache !== null) {
+            return self::$allRulesCache;
+        }
+
+        $rulesPath = config('laravel-rules.rules_path', 'config/laravel-rules');
+        $fullPath = base_path($rulesPath);
+
+        if (!File::isDirectory($fullPath)) {
+            self::$allRulesCache = [];
+            return [];
+        }
+
+        $allRules = [];
+        $files = File::files($fullPath);
+
+        foreach ($files as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $filename = $file->getFilenameWithoutExtension();
+            $fileRules = require $file->getPathname();
+
+            if (!is_array($fileRules)) {
+                continue;
+            }
+
+            // Prefix all rules with the filename
+            foreach ($fileRules as $group => $rules) {
+                $prefixedGroup = $filename . '.' . $group;
+                $allRules[$prefixedGroup] = $rules;
+            }
+        }
+
+        self::$allRulesCache = $allRules;
+        return $allRules;
+    }
+
     protected static function _getFromCache(string $group): ?array
     {
+        if (!config('laravel-rules.cache_enabled', true)) {
+            return null;
+        }
+
         return Cache::get(self::CACHE_KEY . $group);
     }
 
     protected static function _putInCache(string $group, array $rules): void
     {
-        Cache::put(self::CACHE_KEY . $group, $rules, 3600);
+        if (!config('laravel-rules.cache_enabled', true)) {
+            return;
+        }
+
+        $ttl = config('laravel-rules.cache_ttl', 3600);
+
+        if ($ttl === 0) {
+            Cache::forever(self::CACHE_KEY . $group, $rules);
+        } else {
+            Cache::put(self::CACHE_KEY . $group, $rules, $ttl);
+        }
     }
 
     protected static function _getFieldsRules(string $group): array
     {
-        $fieldsRules = config(sprintf('%s.%s', self::CONFIG_FILE, $group));
+        $allRules = self::_loadAllRules();
 
-        if (empty($fieldsRules)) {
+        if (!isset($allRules[$group])) {
             throw new InvalidArgumentException(sprintf('Rules not found for group %s', $group));
         }
-        return $fieldsRules;
+
+        return $allRules[$group];
     }
 
     /**
@@ -166,7 +229,18 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
      */
     public static function forOrphansField(string $field): static
     {
-        return (new static(self::ORPHANS_GROUP, self::_getLaravelRules(self::ORPHANS_GROUP, [$field])));
+        // Try to find orphans in any file
+        $allRules = self::_loadAllRules();
+
+        foreach ($allRules as $group => $fields) {
+            if (Str::endsWith($group, '.orphans')) {
+                if (isset($fields[$field])) {
+                    return (new static($group, self::_getLaravelRules($group, [$field])));
+                }
+            }
+        }
+
+        throw new InvalidArgumentException(sprintf('Orphan field %s not found', $field));
     }
 
     /**
@@ -393,6 +467,32 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
     public function count(): int
     {
         return count($this->rules);
+    }
+
+    /**
+     * Clear all cached rules.
+     *
+     * @return void
+     */
+    public static function clearCache(): void
+    {
+        $allRules = self::_loadAllRules();
+
+        foreach (array_keys($allRules) as $group) {
+            Cache::forget(self::CACHE_KEY . $group);
+        }
+
+        self::$allRulesCache = null;
+    }
+
+    /**
+     * Get all available rule groups.
+     *
+     * @return array
+     */
+    public static function getAllGroups(): array
+    {
+        return array_keys(self::_loadAllRules());
     }
 
     /**
