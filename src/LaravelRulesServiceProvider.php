@@ -28,7 +28,7 @@ class LaravelRulesServiceProvider extends PackageServiceProvider
             ->hasInstallCommand(function(InstallCommand $command) {
                 $command
                     ->publishConfigFile()
-                    ->askToStarRepoOnGitHub('simonebianco/laravel-rules');
+                    ->askToStarRepoOnGitHub('simone-bianco/laravel-rules');
             });
     }
 
