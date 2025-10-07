@@ -304,9 +304,25 @@ class Rules implements IteratorAggregate, Countable, JsonSerializable, Stringabl
      *
      * @param string $field The name of the field whose rules are to be retrieved.
      * @return array An array of rules for the specified field.
-     * @throws InvalidArgumentException if the field is not found in the ruleset.
      */
     public function getFieldRules(string $field): array
+    {
+        return $this->rules[$field] ?? [];
+    }
+
+    /**
+     * Retrieves the validation rules for a single specified field.
+     *
+     * <code>
+     * $nameRules = Rules::for('user')->getFieldRulesOrFail('name');
+     * // $nameRules will be ['min:2', 'max:255']
+     * </code>
+     *
+     * @param string $field The name of the field whose rules are to be retrieved.
+     * @return array An array of rules for the specified field.
+     * @throws InvalidArgumentException if the field is not found in the ruleset.
+     */
+    public function getFieldRulesOrFail(string $field): array
     {
         if (!array_key_exists($field, $this->rules)) {
             throw new InvalidArgumentException(sprintf('Field %s not found in group %s', $field, $this->group));
