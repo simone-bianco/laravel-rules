@@ -1,19 +1,6 @@
 <?php
 
 return [
-    'user' => [
-        'name' => [
-            'string' => true,
-            'min' => 2,
-            'max' => 255,
-        ],
-        'email' => [
-            'string' => true,
-            'max' => 255,
-            'email' => true,
-        ],
-    ],
-    'orphans' => [
-        // Single fields that are not part of any group
-    ],
+    'cache_enabled' => env('LARAVEL_RULES_CACHE_ENABLED', true),
+    'cache_ttl' => env('LARAVEL_RULES_CACHE_TTL', 3600)
 ];
